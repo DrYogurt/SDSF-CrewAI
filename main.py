@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+import requests
+
 
 from agents import BlogAgents
 from tasks import Tasks
@@ -19,11 +21,28 @@ from textwrap import dedent
 # OpenHermes 10387
 # WizardLM-uncensored 3309
 
-chat_model = lambda model: ChatOllama(
+ollama_url="http://192.168.86.34:11434"
+
+
+
+
+def chat_model(model: str):
+    response = requests.get(ollama_url + "/api/tags")
+
+    if response.status_code == 200:
+        models = response.json()
+        is_model = [model in modelnames["name"] for modelnames in models['models']]
+    if not any(is_model):
+        print(f"Pulling model {model}")
+        response = requests.post(ollama_url + "/api/pull", json={"name": model})
+        if response.status_code != 200:
+            raise ValueError(f"Could not pull model {model}")
+
+    ChatOllama(
     model=model,
-    ollama_address="<IP_ADDRESS_OF_OLLAMA_SERVER>:11434",
+    base_url="ollama_url",
     callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
-)
+    )
 
 mistral = chat_model("mistral")
 openhermes = chat_model("openhermes")
